@@ -13,13 +13,16 @@ module Regina
       @meta[:copyright] = nil
       @meta[:usage] = []
       
+      @options = {}
       @flags = {}
-      @short_names = []
+      @argv = []
       
       cloaker(&b).bind(self).call(*a)
       
       @meta[:usage].flatten!
       @meta[:authors].flatten!
+      
+      parse until ARGV.empty?
     end
     
     
@@ -45,17 +48,39 @@ module Regina
     
     
     def []( key )
-      @flags[key]
+      @options[key.to_s]
     end
     
     
+    def parse
+      if arg = ARGV.shift.match( /^-(?:-)?([a-z0-9]+)$/i )
+        if @flags.has_key? arg[1]
+          set_option arg[1]
+        else
+          arg[1].each_char do |c|
+            set_option c if @flags.has_key?( c )
+          end
+        end
+      else
+        @argv << arg[1]
+      end
+    end
+    
+    
+    def set_option( flag )
+      @options[ @flags[ flag ].long_name ] = ( case @flags[ flag ].type
+        when :bool
+          true
+        when :string
+          ARGV.shift
+      end )
+    end
+    
     def add_option( type, long_name, description, options = {})
-      options[:long_name] = long_name
       options[:description] = description
       options[:short_name] ||= shorten_name( long_name )
       
-      @short_names << options[:short_name]
-      @flags[long_name] = Flag.new( type, options )
+      @flags[ options[:short_name] ] = @flags[long_name] = Flag.new( type, long_name, options )
     end
     
     
@@ -77,8 +102,8 @@ module Regina
     
     def shorten_name(long_name)
       short_name = SPECIAL_NAMES[ long_name ] ||
-                   @short_names.uniq?( long_name[0] ) ||
-                   @short_names.uniq?( long_name[0].capitalize )
+                   @flags.uniq?( long_name[0] ) ||
+                   @flags.uniq?( long_name[0].capitalize )
       
       error 'Could not determine short_name for option: #{long_name}.  Please specify one.' if ! short_name
       
@@ -87,21 +112,16 @@ module Regina
     
     class Flag
       attr_reader :type
+      attr_reader :long_name
       attr_reader :options
       
-      def initialize( type, options = {})
+      def initialize( type, long_name, options = {})
         @type = type
+        @long_name = long_name
         @options = options
-        
-        make_name
-      end
-      
-      def make_name
-        if options[:short_name].nil?
-          
-        end
       end
     end
+
 
     # thanks to _why
     def cloaker &b
@@ -122,9 +142,9 @@ module Regina
 
 end
 
-class Array
+class Hash
   def uniq?( value )
-    return false if self.include? value
+    return false if self.has_key? value
     value
   end
 end
@@ -138,13 +158,15 @@ end
 
 a = Regina.new do
   title 'Pirate Program'
-  by 'Roc and Wil'
+  by 'Rocky Meza'
+  by 'William Scales'
   copyright '2010'
   usage 'pirate [options]'
   usage 'pirate [subcommand] [options]'
   
-  bool 'aargh', 'Do you want pirates?', :function => :if_pirates
-  int 'number', 'How many pirates?', :short => 'x', :function => :output_pirates
+  bool 'aargh', 'Do you want pirates?'
+  string 'asdf', 'Blahdy blah?'
+  int 'number', 'How many pirates?', :short_name => 'x'
 end
 
 p a
