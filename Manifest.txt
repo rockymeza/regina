@@ -1,0 +1,8 @@
+.autotest
+History.txt
+Manifest.txt
+README.txt
+Rakefile
+bin/regina
+lib/regina.rb
+test/test_regina.rb
