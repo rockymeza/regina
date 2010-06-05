@@ -16,7 +16,7 @@ module Regina
       @flags = {}
       @short_names = []
       
-      cloaker(&b).bind(self).call(*a)
+      self.instance_eval &b
       
       @meta[:usage].flatten!
       @meta[:authors].flatten!
@@ -103,20 +103,10 @@ module Regina
       end
     end
 
-    # thanks to _why
-    def cloaker &b
-      (class << self; self; end).class_eval do
-        define_method :cloaker_, &b
-        meth = instance_method :cloaker_
-        remove_method :cloaker_
-        meth
-      end
-    end
-
   end
 
   def new *a, &b
-    return Parser.new *a, &b if b
+    return Parser.new(*a, &b) if b
   end
   module_function :new
 
