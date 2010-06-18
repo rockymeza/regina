@@ -10,7 +10,7 @@ options = Regina.new do
   usage 'pirate [subcommand] [options]'
   
   bool 'pirates', 'Do you want pirates?'
-  string 'name', 'What is your name?'
+  string 'name', 'What is your name?', :default => 'Rocky Meza'
   int 'amount', 'How many pirates?'
 end
 

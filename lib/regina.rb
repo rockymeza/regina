@@ -1,6 +1,23 @@
 module Regina
   VERSION = '0.0.1'
-
+  
+  
+  def next_flag
+    if ARGV[0][0] == '-'
+      return ARGV.shift
+    end
+  end
+  module_function :next_flag
+  
+  
+  def next_arg
+    if ARGV[0][0] != '-'
+      return ARGV.shift
+    end
+  end
+  module_function :next_arg
+  
+  
   class Parser
     
     SPECIAL_NAMES = { 
@@ -58,7 +75,7 @@ module Regina
     
     
     def parse_flags
-      argv = ARGV.shift
+      argv = Regina.next_flag
       if argv.match( /^-h|--help$/ )
         help
       elsif arg = argv.match( /^--([a-z0-9]+)(?:=(.*?))?$/mi ) # two dashes
@@ -88,31 +105,15 @@ module Regina
     
     def set_option( arg )
       if arg.is_a? MatchData
-        flag, value = arg[1], arg[2]
+        flag_name, value = arg[1], arg[2]
+      elsif arg.is_a? Array
+        flag_name = arg[0], arg[1]
       else
-        flag = arg
+        flag_name = arg
       end
       
-      @options[ @flags[ flag ].long_name ] = ( case @flags[ flag ].type
-        when :string
-          if ! value.nil?
-            value
-          elsif ARGV[0]
-            ARGV.shift
-          else
-            error "'--#{@flags[ flag ].long_name}' requires a string value"
-          end
-        when :int
-          if value.validate(:int)
-            value
-          elsif ARGV[0].validate(:int)
-            ARGV.shift
-          else
-            error "#{@flags[ flag ].long_name} requires an integer value"
-          end
-        when :bool
-          true
-      end )
+      flag = @flags[ flag_name ]
+      @options[ flag.long_name ] = flag.set( value )
     end
     
     
@@ -120,7 +121,12 @@ module Regina
       options[:description] = description
       options[:short_name] ||= shorten_name( long_name )
       
-      @flags[ options[:short_name] ] = @flags[long_name] = Flag.new( type, long_name, options )
+      @flags[ options[:short_name] ] = @flags[ long_name ] = Flag.new( type, long_name, options )
+      
+      # this is sort of odd
+      if options[:default]
+        @options[ long_name ] = @flags[ long_name ].set_default( options[:default] )
+      end
     end
     
     
@@ -147,9 +153,7 @@ module Regina
                    hash.uniq?( long_name[0] ) ||
                    hash.uniq?( long_name[0].capitalize )
       
-      error 'Could not determine short_name for option: #{long_name}.  Please specify one.' if ! short_name
-      
-      short_name
+      short_name || error( 'Could not determine short_name for option: #{long_name}.  Please specify one.' )
     end
     
     class Flag
@@ -161,6 +165,41 @@ module Regina
         @type = type
         @long_name = long_name
         @options = options
+      end
+      
+      
+      def set( value )
+        @value = case @type
+          when :string, :int
+            value || Regina.next_arg || @options[:default]
+          when :bool
+            true
+        end
+        validate
+        
+        return @value
+      end
+      
+      
+      def set_default( value )
+        @options[:default] = value
+        set( value )
+      end
+      
+      
+      def validate
+        case @type
+          when :string
+            if ! @value
+              error "'--#{@long_name}' requires a string value"
+            end
+          when :int
+            if ! @value.validate(:int)
+              error "#{@long_name} requires an integer value"
+            end
+          when :bool
+            true
+        end
       end
     end
   end
@@ -186,17 +225,17 @@ class String
   def validate(type)
     case type
       when :int
-        return TRUE if self =~ /^[0-9]*$/
+        return true if self =~ /^[0-9]*$/
       else
         nil
     end
-    FALSE
+    false
   end
 end
 
 class NilClass # Oh no I didn't
   def validate(type)
-    FALSE
+    false
   end
 end
 
