@@ -1,3 +1,17 @@
 #!/usr/bin/env ruby
+require 'lib/regina'
 
-abort "you need to write me"
+options = Regina.new do
+  title 'Pirate Program'
+  by 'Rocky Meza'
+  by 'William Scales'
+  copyright '2010'
+  usage 'pirate [options]'
+  usage 'pirate [subcommand] [options]'
+  
+  bool 'pirates', 'Do you want pirates?'
+  string 'name', 'What is your name?'
+  int 'amount', 'How many pirates?', :short_name => 'x'
+end
+
+p options.options, options.argv, options.flags.map{ |k,v| k + ' ' + v.type }
