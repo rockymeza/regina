@@ -36,7 +36,7 @@ module Regina
       
       @options = {}
       @commands = {}
-      @flags = {}
+      @flags = FlagContainer.new
       @argv = []
       
       self.instance_eval &b
@@ -121,7 +121,7 @@ module Regina
       options[:description] = description
       options[:short_name] ||= shorten_name( long_name )
       
-      @flags[ options[:short_name] ] = @flags[ long_name ] = Flag.new( type, long_name, options )
+      @flags.add( Flag.new( type, long_name, options ) )
       
       # this is sort of odd
       if options[:default]
@@ -156,6 +156,39 @@ module Regina
       short_name || error( 'Could not determine short_name for option: #{long_name}.  Please specify one.' )
     end
     
+    
+    def help
+      message = <<-EOS
+#{@meta[:title]}
+
+Usage:
+\t#{@meta[:usage].join("\n\t")}
+#{@flags.output_options}
+EOS
+      puts message
+      exit
+    end
+    
+    
+    class FlagContainer < Hash
+      def initialize
+        @flags = []
+        super
+      end
+      
+      def output_options
+        unless empty?
+          output = "\nOptions:\n"
+          @flags.each { |f| output << f.format + "\n" }
+          return output
+        end
+      end
+      
+      def add( flag )
+        @flags << flag
+        self[flag.long_name] = self[flag.options[:short_name]] = flag
+      end
+    end
     class Flag
       attr_reader :type
       attr_reader :long_name
@@ -200,6 +233,11 @@ module Regina
           when :bool
             true
         end
+      end
+      
+      
+      def format
+        "\t-#{options[:short_name]}, --#{@long_name}\t\t\t#{options[:description]}"
       end
     end
   end

@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-require 'lib/regina'
+require File.dirname(__FILE__) + '/../lib/regina'
 
 options = Regina.new do
   title 'Pirate Program'
