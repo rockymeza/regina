@@ -5,6 +5,10 @@ module Regina
     
     SPECIAL_NAMES = { 
       :dry_run => :n }
+      
+    attr_reader :options
+    attr_reader :argv
+    attr_reader :flags
 
     def initialize( *a, &b )
       @meta = {}
@@ -14,6 +18,7 @@ module Regina
       @meta[:usage] = []
       
       @options = {}
+      @commands = {}
       @flags = {}
       @argv = []
       
@@ -22,7 +27,7 @@ module Regina
       @meta[:usage].flatten!
       @meta[:authors].flatten!
       
-      parse until ARGV.empty?
+      parse_flags until ARGV.empty?
     end
     
     
@@ -52,29 +57,50 @@ module Regina
     end
     
     
-    def parse
-      if arg = ARGV.shift.match( /^-(?:-)?([a-z0-9]+)$/i )
-        if @flags.has_key? arg[1]
-          set_option arg[1]
-        else
-          arg[1].each_char do |c|
-            set_option c if @flags.has_key?( c )
+    def parse_flags
+      argv = ARGV.shift
+      if argv.match( /^-h|--help$/ )
+        help
+      elsif arg = argv.match( /^--([a-z0-9]+)(?:=(.*?))?$/mi ) # two dashes
+        return set_option arg if @flags.has_key?( arg[1] )
+      elsif arg = argv.match( /^-([a-z0-9])(?:=(.*?))?$/mi ) # single dash
+        return set_option arg if @flags.has_key?( arg[1] )
+      elsif arg = argv.match( /^-([a-z0-9]+$)/mi )
+        options = []
+        arg[1].each_char do |c|
+          if @flags.has_key?( c )
+            options << c
+          else
+            warning "What do you want me to do with '#{arg}'?"
+            return
           end
         end
+        if options
+          options.each { |c| set_option c}
+          return
+        end
       else
-        @argv << arg[1]
+        return @argv << argv
       end
+      warning "What do you want me to do with '#{arg}'?"
     end
     
     
-    def set_option( flag )
+    def set_option( arg )
+      if arg.is_a? MatchData
+        flag, value = arg[1], arg[2]
+      else
+        flag = arg
+      end
+      
       @options[ @flags[ flag ].long_name ] = ( case @flags[ flag ].type
+        when :string || :int
+          value || ARGV.shift
         when :bool
           true
-        when :string
-          ARGV.shift
       end )
     end
+    
     
     def add_option( type, long_name, description, options = {})
       options[:description] = description
@@ -87,6 +113,7 @@ module Regina
     def bool( long_name, description, options = {} )
       add_option :bool, long_name, description, options
     end
+    alias :boolean :bool
     
     
     def int( long_name, description, options = {} )
@@ -98,12 +125,13 @@ module Regina
     def string( long_name, description, options = {} )
       add_option :string, long_name, description, options
     end
+    alias :text :string
     
     
-    def shorten_name(long_name)
+    def shorten_name(long_name, hash = @flags)
       short_name = SPECIAL_NAMES[ long_name ] ||
-                   @flags.uniq?( long_name[0] ) ||
-                   @flags.uniq?( long_name[0].capitalize )
+                   hash.uniq?( long_name[0] ) ||
+                   hash.uniq?( long_name[0].capitalize )
       
       error 'Could not determine short_name for option: #{long_name}.  Please specify one.' if ! short_name
       
@@ -122,7 +150,10 @@ module Regina
       end
     end
   end
-
+  
+  class CommandParser < Parser
+  end
+  
   def new *a, &b
     return Parser.new(*a, &b) if b
   end
@@ -142,19 +173,8 @@ module Kernel
     puts "\e[1m\e[31mError:\e[0m #{message}"
     exit
   end
-end
-
-a = Regina.new do
-  title 'Pirate Program'
-  by 'Rocky Meza'
-  by 'William Scales'
-  copyright '2010'
-  usage 'pirate [options]'
-  usage 'pirate [subcommand] [options]'
   
-  bool 'aargh', 'Do you want pirates?'
-  string 'asdf', 'Blahdy blah?'
-  int 'number', 'How many pirates?', :short_name => 'x'
+  def warning( message )
+    puts "\e[1m\e[33mWarning:\e[0m #{message}"
+  end
 end
-
-p a
