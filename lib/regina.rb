@@ -94,8 +94,22 @@ module Regina
       end
       
       @options[ @flags[ flag ].long_name ] = ( case @flags[ flag ].type
-        when :string || :int
-          value || ARGV.shift
+        when :string
+          if ! value.nil?
+            value
+          elsif ARGV[0]
+            ARGV.shift
+          else
+            error "'--#{@flags[ flag ].long_name}' requires a string value"
+          end
+        when :int
+          if value.validate(:int)
+            value
+          elsif ARGV[0].validate(:int)
+            ARGV.shift
+          else
+            error "#{@flags[ flag ].long_name} requires an integer value"
+          end
         when :bool
           true
       end )
@@ -165,6 +179,24 @@ class Hash
   def uniq?( value )
     return false if self.has_key? value
     value
+  end
+end
+
+class String
+  def validate(type)
+    case type
+      when :int
+        return TRUE if self =~ /^[0-9]*$/
+      else
+        nil
+    end
+    FALSE
+  end
+end
+
+class NilClass # Oh no I didn't
+  def validate(type)
+    FALSE
   end
 end
 
