@@ -3,7 +3,7 @@ module Regina
   
   
   def next_flag
-    if ARGV[0][0] == '-'
+    if ARGV[0] && ARGV[0][0] == '-'
       return ARGV.shift
     end
   end
@@ -11,7 +11,7 @@ module Regina
   
   
   def next_arg
-    if ARGV[0][0] != '-'
+    if ARGV[0] && ARGV[0][0] != '-'
       return ARGV.shift
     end
   end
@@ -44,7 +44,10 @@ module Regina
       @meta[:usage].flatten!
       @meta[:authors].flatten!
       
-      parse_flags until ARGV.empty?
+      check_commands if ! @commands.empty?
+      unless @options.has_key?( :command )
+        parse_flags until ARGV.empty?
+      end
     end
     
     
@@ -74,30 +77,41 @@ module Regina
     end
     
     
+    def check_commands
+      if @commands.has_key?(ARGV[0])
+        command = Regina.next_arg
+        @options[ :command ] = command
+        command_options = Regina.new @commands[ command ][ :block ]
+        @options[ :command_options ] = command_options
+      end
+    end
+    
+    
     def parse_flags
-      argv = Regina.next_flag
-      if argv.match( /^-h|--help$/ )
-        help
-      elsif arg = argv.match( /^--([a-z0-9]+)(?:=(.*?))?$/mi ) # two dashes
-        return set_option arg if @flags.has_key?( arg[1] )
-      elsif arg = argv.match( /^-([a-z0-9])(?:=(.*?))?$/mi ) # single dash
-        return set_option arg if @flags.has_key?( arg[1] )
-      elsif arg = argv.match( /^-([a-z0-9]+$)/mi )
-        options = []
-        arg[1].each_char do |c|
-          if @flags.has_key?( c )
-            options << c
-          else
-            warning "What do you want me to do with '#{arg}'?"
+      if argv = Regina.next_flag
+        if argv.match( /^-h|--help$/ )
+          help
+        elsif arg = argv.match( /^--([a-z0-9]+)(?:=(.*?))?$/mi ) # two dashes
+          return set_option arg if @flags.has_key?( arg[1] )
+        elsif arg = argv.match( /^-([a-z0-9])(?:=(.*?))?$/mi ) # single dash
+          return set_option arg if @flags.has_key?( arg[1] )
+        elsif arg = argv.match( /^-([a-z0-9]+$)/mi )
+          options = []
+          arg[1].each_char do |c|
+            if @flags.has_key?( c )
+              options << c
+            else
+              warning "What do you want me to do with '#{arg}'?"
+              return
+            end
+          end
+          if options
+            options.each { |c| set_option c}
             return
           end
         end
-        if options
-          options.each { |c| set_option c}
-          return
-        end
       else
-        return @argv << argv
+        return @argv << Regina.next_arg
       end
       warning "What do you want me to do with '#{arg}'?"
     end
@@ -148,10 +162,19 @@ module Regina
     alias :text :string
     
     
-    def shorten_name(long_name, hash = @flags)
+    def command( long_name, description, options = {}, &block )
+      options[:description] = description
+      options[:block] = block
+      
+      @commands[ long_name ] = options
+    end
+    alias :sub :command
+   
+    
+    def shorten_name(long_name)
       short_name = SPECIAL_NAMES[ long_name ] ||
-                   hash.uniq?( long_name[0] ) ||
-                   hash.uniq?( long_name[0].capitalize )
+                   @flags.uniq?( long_name[0] ) ||
+                   @flags.uniq?( long_name[0].capitalize )
       
       short_name || error( 'Could not determine short_name for option: #{long_name}.  Please specify one.' )
     end
@@ -188,6 +211,12 @@ EOS
         @flags << flag
         self[flag.long_name] = self[flag.options[:short_name]] = flag
       end
+      
+      
+      def uniq?( value )
+        return false if self.has_key? value
+        value
+      end
     end
     class Flag
       attr_reader :type
@@ -208,7 +237,7 @@ EOS
           when :bool
             true
         end
-        validate
+        validate_type
         
         return @value
       end
@@ -220,7 +249,7 @@ EOS
       end
       
       
-      def validate
+      def validate_type
         case @type
           when :string
             if ! @value
@@ -250,13 +279,6 @@ EOS
   end
   module_function :new
 
-end
-
-class Hash
-  def uniq?( value )
-    return false if self.has_key? value
-    value
-  end
 end
 
 class String

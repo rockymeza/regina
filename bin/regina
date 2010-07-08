@@ -10,8 +10,18 @@ options = Regina.new do
   usage 'pirate [subcommand] [options]'
   
   bool 'pirates', 'Do you want pirates?'
-  string 'name', 'What is your name?', :default => 'Rocky Meza'
+  string 'name', 'What is your name?', :required => true
   int 'amount', 'How many pirates?'
+  command 'do_it', 'Do what you tell it to do', do
+    Regina.new do
+      title 'Pirate Subprogram'
+    
+      bool 'alphabet', 'output the alphabet?'
+    end
+  end
 end
 
-p options.options, options.argv, options.flags.map{ |k,v| k + ' ' + v.type }
+
+
+  p options.options, options.argv
+p 'options:', options.options, 'argv:', options.argv
