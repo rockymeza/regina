@@ -16,6 +16,11 @@ module Regina
     end
   end
   module_function :next_arg
+
+  def arg_string
+    return ARGV.join(' ')
+  end
+  module_function :arg_string
   
   
   class Parser
@@ -81,7 +86,10 @@ module Regina
     def check_commands
       if @commands.has_key?(ARGV[0])
         command = Regina.next_arg
+        @main.send(:before_execute) if @main.private_methods.include?( :before_execute )
         @main.send command
+        @main.send(:after_execute) if @main.private_methods.include?( :after_execute )
+        exit
       end
     end
     
@@ -186,9 +194,19 @@ module Regina
 Usage:
 \t#{@meta[:usage].join("\n\t")}
 #{@flags.output_options}
+#{output_commands}
 EOS
       puts message
       exit
+    end
+
+    
+    def output_commands
+      output = "\nCommands:\n"
+      @commands.each do |name, command|
+        output << "\t#{name}\t\t\t#{command[:description]}\n"
+      end
+      return output
     end
 
     

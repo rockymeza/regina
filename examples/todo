@@ -1,0 +1,54 @@
+#!/usr/bin/env ruby
+require File.dirname(__FILE__) + '/../lib/regina'
+require 'yaml'
+
+@todo_file = '.todo'
+
+
+
+def before_execute
+  unless File.exists?(@todo_file)
+    File.new(@todo_file, "w+") 
+  end
+end
+
+def list
+  puts "ID: Task"
+  puts IO.readlines(@todo_file)
+end
+
+def add
+  task_list = YAML.load_file(@todo_file)
+  id = ((task_list && task_list.keys[-1] + 1) || 1).to_s
+  task = Regina.arg_string
+
+  File.open(@todo_file, 'a') do |file|xecute
+
+    file.puts(id +': '+ task)
+  end
+end
+
+def complete
+  task_list = YAML.load_file(@todo_file)
+  task_list.delete( Regina.next_arg.to_i )
+  
+  File.open(@todo_file, 'w') do |file|
+    task_list.each do |id, task|
+      file.puts id +': '+ task
+    end
+  end
+end
+
+options = Regina.new do
+  title 'Todo Program'
+  by 'Rocky Meza'
+  copyright '2010'
+  usage 'todo [subcommand]'
+  
+  command 'list', 'List todo items'
+  command 'add', 'Add a todo item'
+  command 'complete', 'Complete a todo item'
+end
+
+
+options.help
