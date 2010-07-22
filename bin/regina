@@ -1,6 +1,15 @@
 #!/usr/bin/env ruby
 require File.dirname(__FILE__) + '/../lib/regina'
 
+
+
+
+def do_it
+  d_options = Regina.new do
+    bool 'asdf', 'ASDF?'
+  end
+end
+
 options = Regina.new do
   title 'Pirate Program'
   by 'Rocky Meza'
@@ -12,16 +21,9 @@ options = Regina.new do
   bool 'pirates', 'Do you want pirates?'
   string 'name', 'What is your name?', :required => true
   int 'amount', 'How many pirates?'
-  command 'do_it', 'Do what you tell it to do', do
-    Regina.new do
-      title 'Pirate Subprogram'
-    
-      bool 'alphabet', 'output the alphabet?'
-    end
-  end
+  command 'do_it', 'Do what you tell it to do'
 end
 
 
-
-  p options.options, options.argv
+p options.options, options.argv
 p 'options:', options.options, 'argv:', options.argv

@@ -39,6 +39,7 @@ module Regina
       @flags = FlagContainer.new
       @argv = []
       
+      @main = eval 'self', b.binding
       self.instance_eval &b
       
       @meta[:usage].flatten!
@@ -80,9 +81,7 @@ module Regina
     def check_commands
       if @commands.has_key?(ARGV[0])
         command = Regina.next_arg
-        @options[ :command ] = command
-        command_options = Regina.new @commands[ command ][ :block ]
-        @options[ :command_options ] = command_options
+        @main.send command
       end
     end
     
@@ -191,7 +190,7 @@ EOS
       puts message
       exit
     end
-    
+
     
     class FlagContainer < Hash
       def initialize
