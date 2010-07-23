@@ -22,8 +22,7 @@ def add
   id = ((task_list && task_list.keys[-1] + 1) || 1).to_s
   task = Regina.arg_string
 
-  File.open(@todo_file, 'a') do |file|xecute
-
+  File.open(@todo_file, 'a') do |file|
     file.puts(id +': '+ task)
   end
 end
