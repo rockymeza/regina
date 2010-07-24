@@ -1,0 +1,64 @@
+#!/usr/bin/env ruby
+require File.dirname(__FILE__) + '/../lib/regina'
+require 'fileutils'
+require 'yaml'
+
+
+class TodoListProgram
+  def initialize
+    @options = Regina.new do
+      title 'Todo Program 2'
+      by 'Rocky Meza'
+      copyright '2010'
+      usage 'todo [command]'
+      
+      string 'file', 'The todo file', :default => '.todo2'
+      command 'add', 'Add a todo item'
+      command 'complete', 'Complete a todo item'
+      command 'list', 'List all todo items'
+    end
+    
+    FileUtils.touch(@options[:file]) unless File.exists?(@options[:file])
+  end
+
+  def main
+    if @options.subcommand
+      self.send @options.subcommand
+    else
+      @options.help
+    end
+  end
+  
+  def add
+    task_list = load_file
+    id = ((task_list && task_list.keys[-1] + 1) || 1).to_s
+    task = @options.argv.join(' ')
+
+    File.open(@options[:file], 'a') do |file|
+      file.puts(id +': '+ task)
+    end
+  end
+
+  def complete
+    task_list = load_file
+    task_list.delete( Regina.next_arg.to_i )
+    
+    File.open(@options[:file], 'w') do |file|
+      task_list.each do |id, task|
+        file.puts id +': '+ task
+      end
+    end
+  end
+
+  def list
+    puts "ID: Task"
+    puts IO.readlines(@options[:file])
+  end
+
+  def load_file
+    YAML.load_file(@options[:file])
+  end
+end
+
+app = TodoListProgram.new
+app.main

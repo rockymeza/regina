@@ -16,12 +16,6 @@ module Regina
     end
   end
   module_function :next_arg
-
-  def arg_string
-    return ARGV.join(' ')
-  end
-  module_function :arg_string
-  
   
   class Parser
     
@@ -29,6 +23,7 @@ module Regina
       :dry_run => :n }
       
     attr_reader :options
+    attr_reader :subcommand
     attr_reader :argv
     attr_reader :flags
 
@@ -43,6 +38,7 @@ module Regina
       @commands = {}
       @flags = FlagContainer.new
       @argv = []
+      @subcommand = nil
       
       @main = eval 'self', b.binding
       self.instance_eval &b
@@ -51,9 +47,7 @@ module Regina
       @meta[:authors].flatten!
       
       check_commands if ! @commands.empty?
-      unless @options.has_key?( :command )
-        parse_flags until ARGV.empty?
-      end
+      parse_flags until ARGV.empty?
     end
     
     
@@ -85,11 +79,7 @@ module Regina
     
     def check_commands
       if @commands.has_key?(ARGV[0])
-        command = Regina.next_arg
-        @main.send(:before_execute) if @main.private_methods.include?( :before_execute )
-        @main.send command
-        @main.send(:after_execute) if @main.private_methods.include?( :after_execute )
-        exit
+        @subcommand = Regina.next_arg
       end
     end
     
@@ -98,11 +88,11 @@ module Regina
       if argv = Regina.next_flag
         if argv.match( /^-h|--help$/ )
           help
-        elsif arg = argv.match( /^--([a-z0-9]+)(?:=(.*?))?$/mi ) # two dashes
+        elsif arg = argv.match( /^--([a-z0-9]+)(?:=(.*?))?$/i ) # two dashes
           return set_option arg if @flags.has_key?( arg[1] )
-        elsif arg = argv.match( /^-([a-z0-9])(?:=(.*?))?$/mi ) # single dash
+        elsif arg = argv.match( /^-([a-z0-9])(?:=(.*?))?$/i ) # single dash
           return set_option arg if @flags.has_key?( arg[1] )
-        elsif arg = argv.match( /^-([a-z0-9]+$)/mi )
+        elsif arg = argv.match( /^-([a-z0-9]+$)/i )
           options = []
           arg[1].each_char do |c|
             if @flags.has_key?( c )
