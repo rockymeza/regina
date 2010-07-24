@@ -45,6 +45,7 @@ class TodoListProgram
     
     File.open(@options[:file], 'w') do |file|
       task_list.each do |id, task|
+        id = id.to_s
         file.puts id +': '+ task
       end
     end
