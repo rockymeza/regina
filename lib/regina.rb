@@ -21,6 +21,8 @@ module Regina
     
     SPECIAL_NAMES = { 
       :dry_run => :n }
+    META = %w(title version copyright)
+    METAS = %w(author usage)
       
     attr_reader :options
     attr_reader :subcommand
@@ -29,10 +31,12 @@ module Regina
 
     def initialize( *a, &b )
       @meta = {}
-      @meta[:title] = nil
-      @meta[:authors] = []
-      @meta[:copyright] = nil
-      @meta[:usage] = []
+      META.each do |meta|
+        add_meta meta, nil
+      end
+      METAS.each do |meta|
+        add_meta meta, [] # set it to an empty array
+      end
       
       @options = {}
       @commands = {}
@@ -40,42 +44,41 @@ module Regina
       @argv = []
       @subcommand = nil
       
-      @main = eval 'self', b.binding
+      @sel = eval 'self', b.binding
       self.instance_eval &b
       
-      @meta[:usage].flatten!
-      @meta[:authors].flatten!
+      METAS.each do |meta|
+        @meta[meta.to_sym].flatten!
+      end
       
       check_commands if ! @commands.empty?
       parse_flags until ARGV.empty?
     end
     
     
-    def title( title )
-      @meta[:title] = title
+    def main
+      if @subcommand
+        @self.send @subcommand
+      else
+        help
+      end
     end
-    
-    
-    def author( author )
-      @meta[:authors] << author
-    end
-    alias :by :author
-    
-    
-    def copyright( copyright )
-      @meta[:copyright] = copyright
-    end
-    
-    
-    def usage( usage )
-      @meta[:usage] << usage
-    end
-    
+
     
     def []( key )
       @options[key.to_s]
     end
     
+
+    def add_meta( key, value )
+      @meta[key.to_sym] = value
+    end
+
+
+    def add_metas( key, value )
+      @meta[key.to_sym] << value
+    end
+
     
     def check_commands
       if @commands.has_key?(ARGV[0])
@@ -139,26 +142,8 @@ module Regina
         @options[ long_name ] = @flags[ long_name ].set_default( options[:default] )
       end
     end
-    
-    
-    def bool( long_name, description, options = {} )
-      add_option :bool, long_name, description, options
-    end
-    alias :boolean :bool
-    
-    
-    def int( long_name, description, options = {} )
-      add_option :int, long_name, description, options
-    end
-    alias :integer :int
-    
-    
-    def string( long_name, description, options = {} )
-      add_option :string, long_name, description, options
-    end
-    alias :text :string
-    
-    
+   
+
     def command( long_name, description, options = {}, &block )
       options[:description] = description
       options[:block] = block
@@ -194,9 +179,23 @@ EOS
     def output_commands
       output = "\nCommands:\n"
       @commands.each do |name, command|
-        output << "\t#{name}\t\t\t#{command[:description]}\n"
+        padding = ' '*(31 - name.length)
+        output << "\t#{name + padding + command[:description]}\n"
       end
       return output
+    end
+
+    
+    def method_missing(method, *a, &b) # meta programming for DRYness
+      if Flag::TYPES.include?(method.to_s) # option adding
+        add_option method, *a
+      elsif META.include?(method.to_s) # singular meta data adding
+        add_meta method, a[0]
+      elsif METAS.include?(method.to_s) # plural meta data adding
+        add_metas method, a[0]
+      else
+        super method, *a, &b
+      end
     end
 
     
@@ -226,6 +225,8 @@ EOS
       end
     end
     class Flag
+      TYPES = %w(string int file bool)
+
       attr_reader :type
       attr_reader :long_name
       attr_reader :options
@@ -266,6 +267,10 @@ EOS
             if ! @value.validate(:int)
               error "#{@long_name} requires an integer value"
             end
+          when :file
+            if ! File.exists?(@value)
+              error "#{@long_name} requires a file"
+            end
           when :bool
             true
         end
@@ -273,7 +278,8 @@ EOS
       
       
       def format
-        "\t-#{options[:short_name]}, --#{@long_name}\t\t\t#{options[:description]}"
+        padding = ' '*(25 - @long_name.length)
+        "\t-#{options[:short_name]}, --#{@long_name + padding + @options[:description]}"
       end
     end
   end

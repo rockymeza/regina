@@ -8,25 +8,19 @@ class TodoListProgram
   def initialize
     @options = Regina.new do
       title 'Todo Program 2'
-      by 'Rocky Meza'
+      author 'Rocky Meza'
       copyright '2010'
       usage 'todo [command]'
       
-      string 'file', 'The todo file', :default => '.todo2'
+      string 'file', 'The todo file', :default => '.todo2~'
       command 'add', 'Add a todo item'
       command 'complete', 'Complete a todo item'
       command 'list', 'List all todo items'
     end
     
     FileUtils.touch(@options[:file]) unless File.exists?(@options[:file])
-  end
 
-  def main
-    if @options.subcommand
-      self.send @options.subcommand
-    else
-      @options.help
-    end
+    @options.main
   end
   
   def add
@@ -62,4 +56,3 @@ class TodoListProgram
 end
 
 app = TodoListProgram.new
-app.main
