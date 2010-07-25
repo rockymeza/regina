@@ -2,6 +2,11 @@ module Regina
   VERSION = '0.0.1'
   
   
+  def new *a, &b
+    return Parser.new(*a, &b) if b
+  end
+  module_function :new
+  
   def next_flag
     if ARGV[0] && ARGV[0][0] == '-'
       return ARGV.shift
@@ -9,18 +14,19 @@ module Regina
   end
   module_function :next_flag
   
-  
   def next_arg
     if ARGV[0] && ARGV[0][0] != '-'
       return ARGV.shift
     end
   end
   module_function :next_arg
-  
+ 
+
   class Parser
     
     SPECIAL_NAMES = { 
       :dry_run => :n }
+
     META = %w(title version copyright)
     METAS = %w(author usage)
       
@@ -44,7 +50,7 @@ module Regina
       @argv = []
       @subcommand = nil
       
-      @sel = eval 'self', b.binding
+      @self = eval 'self', b.binding
       self.instance_eval &b
       
       METAS.each do |meta|
@@ -65,6 +71,7 @@ module Regina
     end
 
     
+    # provides hash access for options
     def []( key )
       @options[key.to_s]
     end
@@ -283,17 +290,11 @@ EOS
       end
     end
   end
-  
-  class CommandParser < Parser
-  end
-  
-  def new *a, &b
-    return Parser.new(*a, &b) if b
-  end
-  module_function :new
 
 end
 
+
+# extensions because I can
 class String
   def validate(type)
     case type
@@ -305,13 +306,11 @@ class String
     false
   end
 end
-
 class NilClass # Oh no I didn't
   def validate(type)
     false
   end
 end
-
 module Kernel
   def error( message )
     puts "\e[1m\e[31mError:\e[0m #{message}"
