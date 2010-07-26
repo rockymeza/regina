@@ -10,6 +10,7 @@ class TodoListProgram
       title 'Todo Program 2'
       author 'Rocky Meza'
       copyright '2010'
+      version '0.0.1'
       usage 'todo [command]'
       
       string 'file', 'The todo file', :default => '.todo2~'

@@ -39,6 +39,9 @@ class Regina
     @argv = []
     @subcommand = nil
 
+    add_option :special, :help, 'Display this help message and exit'
+    add_option :special, :version, 'Display the version'
+
     @self = eval 'self', b.binding
     self.instance_eval &b
 
@@ -54,7 +57,7 @@ class Regina
     if @subcommand
       @self.send @subcommand
     else
-      help
+      display_help
     end
   end
 
@@ -79,8 +82,10 @@ class Regina
 
   def parse_flags
     if argv = Regina.next_flag
-      if argv.match( /^-h|--help$/ )
-        help
+      if %w(-h --help).include?( argv )
+        display_help
+      elsif %w(-v --version).include?( argv )
+        display_version
       elsif arg = argv.match( /^--([a-z0-9]+)(?:=(.*?))?$/i ) # two dashes
         return set_option arg if @flags.has_key?( arg[1] )
       elsif arg = argv.match( /^-([a-z0-9])(?:=(.*?))?$/i ) # single dash
@@ -148,7 +153,7 @@ class Regina
     short_name || error( 'Could not determine short_name for option: #{long_name}.  Please specify one.' )
   end
 
-  def help
+  def display_help
     message = Message.new
     message << @meta[:title]
     message << ''
@@ -174,6 +179,14 @@ class Regina
       end
     end
     
+    puts message
+    exit
+  end
+
+  def display_version
+    message = Message.new
+    message << "#{@meta[:title]} v#{@meta[:version]} (C) #{@meta[:copyright]} #{@meta[:author].join(', ')}"
+
     puts message
     exit
   end
