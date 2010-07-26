@@ -120,9 +120,9 @@ class Regina
   end
 
   def add_option( type, long_name, description, options = {})
+    options[:long_name] = long_name
     options[:description] = description
     options[:short_name] ||= shorten_name( long_name )
-    options[:long_name] = long_name
 
     @flags.add( Flag.new( type, options ) )
 
@@ -149,10 +149,11 @@ class Regina
   end
 
   def help
-    message = Message.new(1, @meta[:title]) # this is a weird syntax for Array instantiation ruby...
+    message = Message.new
+    message << @meta[:title]
+    message << ''
 
     if @meta[:usage]
-      message << ''
       message << 'Usage:'
       @meta[:usage].each do |usage|
         message << "\t" + usage
@@ -160,28 +161,29 @@ class Regina
     end
 
     if @flags
-      message << ''
       message << 'Options:'
-      @flags.each do |flag|
-        message << format( flag.options[:short_name] + ', ' + flag.options[:long_name], flag.options[:description] )
+      @flags.each do |long_name, flag|
+        message << format( "-#{flag.options[:short_name]}, --#{flag.options[:long_name]}", flag.options[:description] )
       end
     end
 
     if @commands
-      message << ''
       message << 'Commands:'
       @commands.each do |name, command|
-        message << format( name, command )
+        message << format( name, command[:description] )
       end
     end
-
+    
     puts message
     exit
   end
   
   def format(left, right)
-    padding = ' '*(31 - left.length)
-    return "\t" + left + padding + right
+    padding = ' ' * (31 - left.length)
+    return "\t" +
+    left +
+    padding +
+    right
   end
 
   def method_missing(method, *a, &b) # meta programming for DRYness
@@ -202,9 +204,21 @@ class Regina
     end
   end
   class FlagContainer < Hash
+    def initialize
+      @short_names = {}
+    end
+
     def add( flag )
       self[flag.options[:long_name]] = flag
-      self[flag.options[:short_name]] = flag
+      @short_names[ flag.options[:short_name] ] = flag.options[:long_name]
+    end
+
+    def [] ( key )
+      if key.length == 1 && @short_names.has_key?( key )
+        super @short_names[ key ]
+      else
+        super key
+      end
     end
 
     def uniq?( value )
