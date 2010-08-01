@@ -309,5 +309,3 @@ class Regina
   end
 end
 
-module Kernel
-end
