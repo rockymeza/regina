@@ -4,7 +4,7 @@ class Regina
   SPECIAL_NAMES = { 
     :dry_run => :n }
 
-  META = %w(title version copyright)
+  META = %w(title description version copyright)
   METAS = %w(author usage)
 
   attr_reader :options
@@ -22,6 +22,15 @@ class Regina
     if ARGV[0] && ARGV[0][0] != '-'
       return ARGV.shift
     end
+  end
+
+  def self.error( message )
+    puts "\e[1m\e[31mError:\e[0m #{message}"
+    exit
+  end
+
+  def self.warning( message )
+    puts "\e[1m\e[33mWarning:\e[0m #{message}"
   end
 
   def initialize( *a, &b )
@@ -63,7 +72,11 @@ class Regina
 
   # provides hash access for options
   def []( key )
-    @options[key.to_s]
+    @options[key]
+  end
+
+  def []=( key, value )
+    @options[key] = value
   end
 
   def add_meta( key, value )
@@ -87,16 +100,16 @@ class Regina
       elsif %w(-v --version).include?( argv )
         display_version
       elsif arg = argv.match( /^--([a-z0-9]+)(?:=(.*?))?$/i ) # two dashes
-        return set_option arg if @flags.has_key?( arg[1] )
+        return set_option arg if @flags[ arg[1] ]
       elsif arg = argv.match( /^-([a-z0-9])(?:=(.*?))?$/i ) # single dash
-        return set_option arg if @flags.has_key?( arg[1] )
+        return set_option arg if @flags[ arg[1] ]
       elsif arg = argv.match( /^-([a-z0-9]+$)/i )
         options = []
         arg[1].each_char do |c|
-          if @flags.has_key?( c )
+          if @flags[ c ]
             options << c
           else
-            warning "What do you want me to do with '#{arg}'?"
+            self.warning "What do you want me to do with '#{arg}'?"
             return
           end
         end
@@ -108,7 +121,7 @@ class Regina
     else
       return @argv << Regina.next_arg
     end
-    warning "What do you want me to do with '#{arg}'?"
+    self.warning "What do you want me to do with '#{arg}'?"
   end
 
   def set_option( arg )
@@ -150,12 +163,13 @@ class Regina
                  @flags.uniq?( long_name[0] ) ||
                  @flags.uniq?( long_name[0].capitalize )
 
-    short_name || error( 'Could not determine short_name for option: #{long_name}.  Please specify one.' )
+    short_name || self.error( 'Could not determine short_name for option: #{long_name}.  Please specify one.' )
   end
 
   def display_help
     message = Message.new
     message << @meta[:title]
+    message << @meta[:description] if @meta[:description]
     message << ''
 
     if @meta[:usage]
@@ -165,14 +179,14 @@ class Regina
       end
     end
 
-    if @flags
+    if ! @flags.empty?
       message << 'Options:'
       @flags.each do |long_name, flag|
         message << format( "-#{flag.options[:short_name]}, --#{flag.options[:long_name]}", flag.options[:description] )
       end
     end
 
-    if @commands
+    if ! @commands.empty?
       message << 'Commands:'
       @commands.each do |name, command|
         message << format( name, command[:description] )
@@ -274,15 +288,15 @@ class Regina
         case @type
         when :string
           if ! @value.is_a?(String)
-            error "'--#{@options[:long_name]}' requires a string value"
+            self.error "'--#{@options[:long_name]}' requires a string value"
           end
         when :int
           if ! @value =~ /^[0-9]+$/
-            error "#{@options[:long_name]} requires an integer value"
+            self.error "#{@options[:long_name]} requires an integer value"
           end
         when :file
           if ! File.exists?(@value)
-            error "#{@options[:long_name]} requires a file"
+            self.error "#{@options[:long_name]} requires a file"
           end
         end
       end
@@ -296,12 +310,4 @@ class Regina
 end
 
 module Kernel
-  def error( message )
-    puts "\e[1m\e[31mError:\e[0m #{message}"
-    exit
-  end
-
-  def warning( message )
-    puts "\e[1m\e[33mWarning:\e[0m #{message}"
-  end
 end
